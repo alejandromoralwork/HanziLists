@@ -13,10 +13,36 @@ Learn Mandarin from frequency-ordered vocabulary lists with spaced repetition. E
   - Frequency coverage ("top 50 verbs mastered").
   - Cards due today and your study streak.
   - Accuracy for each direction.
-- Progress is stored in IndexedDB. Use Settings → Export / Import backup to keep it safe or move it to another device.
+- **Accounts and sync, both optional**: sign in to save progress, card edits and settings to your account and continue on any device. You can study without an account; progress then stays in that browser. Backups can be exported and imported as JSON either way.
 
 ## Stack
-Vite + React + TypeScript + Tailwind CSS v4 + Dexie (IndexedDB). It is a static SPA with hash routing, served by Caddy at `/hanzi/`.
+- **Client**: Vite + React + TypeScript + Tailwind CSS v4 + Dexie (IndexedDB). It is a static SPA with hash routing, served by Caddy at `/hanzi/`.
+- **API** ([server/](server/)): zero-dependency Node (`node:http` + built-in `node:sqlite`). Systemd unit `hanzilists-api` on 127.0.0.1:4620, proxied at `/hanzi/api/`.
+
+## Sync design
+The app works offline first. Every study action is written to IndexedDB at once, and its key is queued in an `outbox` table. Sync runs:
+- a few seconds after a change
+- on focus and when the browser comes back online
+- when the tab is hidden
+- every 2 minutes
+
+Each sync makes one `POST /api/sync` call. It pushes the outbox and pulls every server record newer than the client's last `seq`. Conflicts are resolved per record:
+
+| Record | Rule |
+|---|---|
+| `srs` (one per card and direction), `settings` | last write wins, by `updatedAt` |
+| `review` (answer log), `cardop` (card edit) | append-only, with globally unique ids |
+
+Card edits are replayed in time order on each device, so re-ranking stays consistent. **Reset progress** sets the account's `resetAt`. Other devices clear their progress on their next sync, and writes from before the reset are dropped.
+
+**Accounts**:
+- Usernames and passwords are hashed with scrypt.
+- The session is a random token in an `HttpOnly; Secure; SameSite=Strict` cookie scoped to `/hanzi/api`. Only its SHA-256 hash is stored, and it lasts 180 days, renewed as you use it.
+- POST requests require an `X-Hanzi: 1` header, to block cross-site requests (CSRF).
+- Login and sign-up are rate-limited to 20 attempts per 10 minutes per IP.
+- Set `HANZI_SIGNUP=closed` to stop new accounts.
+
+**Signing in** on a device that already has progress merges that progress into the account. **Signing out** pushes pending changes, then clears the device.
 
 ## Data
 `npm run data` downloads the sources into `scripts/.cache/` and writes `public/data/*.json`.
@@ -44,6 +70,8 @@ If you publish new data, your edits survive. Cards you created, edited or delete
 npm run dev       # dev server at http://127.0.0.1:5173/hanzi/
 npm test          # unit tests (scheduler, queue, stats, CRUD re-ranking)
 npm run data      # rebuild public/data from sources
-npm run deploy    # test + build + rsync dist/ to /srv/hanzi
+npm run deploy    # test + build + rsync dist/ to /srv/hanzi + restart the API
+npm run api       # sync API on :4620 (dev: HANZI_INSECURE_COOKIE=1 npm run api)
 npm run preview & npm run e2e   # browser smoke test (Playwright)
+npm run e2e:sync  # two-device sync test (needs preview + api running)
 ```

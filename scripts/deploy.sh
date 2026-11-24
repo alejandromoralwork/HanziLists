@@ -9,4 +9,5 @@ TARGET=${TARGET:-/srv/hanzi}
 npm test
 npm run build
 rsync -a --delete dist/ "$TARGET/"
+if systemctl is-enabled hanzilists-api >/dev/null 2>&1; then sudo systemctl restart hanzilists-api; fi
 echo "Deployed $(jq -r .version public/data/manifest.json 2>/dev/null || true) to $TARGET"

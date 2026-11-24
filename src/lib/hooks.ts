@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, setMeta } from '../db/schema'
+import { db, setMeta, track } from '../db/schema'
+import { scheduleSync } from '../sync/sync'
 import { DEFAULT_SETTINGS, type Settings } from '../types'
 
 /** Minimal hash router: "#/list/verb" → ["list", "verb"]. */
@@ -25,5 +26,14 @@ export const go = (path: string) => {
 export function useSettings(): [Settings, (patch: Partial<Settings>) => void] {
   const row = useLiveQuery(() => db.meta.get('settings'), [])
   const settings = { ...DEFAULT_SETTINGS, ...((row?.value as Partial<Settings>) ?? {}) }
-  return [settings, (patch) => void setMeta('settings', { ...settings, ...patch })]
+  return [
+    settings,
+    (patch) =>
+      void db
+        .transaction('rw', db.meta, db.outbox, async () => {
+          await setMeta('settings', { ...settings, ...patch, updatedAt: Date.now() })
+          await track('settings', 'settings')
+        })
+        .then(() => scheduleSync()),
+  ]
 }

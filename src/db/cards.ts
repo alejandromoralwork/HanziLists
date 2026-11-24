@@ -1,5 +1,6 @@
-import type { Card, Category } from '../types'
-import { db, setMeta } from './schema'
+import type { Card, CardOp, Category } from '../types'
+import { db, setMeta, track, uuid } from './schema'
+import { scheduleSync } from '../sync/sync'
 
 /** Shift ranks in a category: every live card with rank >= from moves by delta. */
 async function shift(category: Category, from: number, delta: number, exceptId?: string) {
@@ -54,4 +55,45 @@ export async function deleteCard(id: string) {
     await db.srs.where('cardId').equals(id).delete()
     await setMeta('reordered', true)
   })
+}
+
+// ---------------------------------------------------------------- user-facing, synced edits
+// Edits are stored as operations and replayed in time order on other devices, so
+// re-ranking (which touches many cards) stays consistent everywhere.
+
+async function record(op: CardOp) {
+  await db.transaction('rw', db.cardops, db.outbox, async () => {
+    await db.cardops.put(op)
+    await track('cardop', op.id)
+  })
+  scheduleSync()
+}
+
+/** Edit an existing card (or create one with a known id). */
+export async function editCard(card: Card) {
+  await saveCard(card)
+  const saved = (await db.cards.get(card.id))!
+  await record({ id: uuid(), ts: Date.now(), type: 'save', card: saved })
+}
+
+export async function addCard(partial: Omit<Card, 'id' | 'global_rank'>) {
+  const id = `u:${uuid()}`
+  await editCard({ ...partial, id, global_rank: 0, userCreated: true })
+  return id
+}
+
+export async function removeCard(id: string) {
+  await deleteCard(id)
+  await record({ id: uuid(), ts: Date.now(), type: 'delete', cardId: id })
+}
+
+/** Apply an operation that came from another device. */
+export async function applyCardOp(op: CardOp) {
+  if (op.type === 'delete') await deleteCard(op.cardId)
+  else {
+    const prev = await db.cards.get(op.card.id)
+    await saveCard({ ...op.card, deleted: false })
+    // saveCard marks pre-existing cards as edited; keep flags as they were on the source device
+    await db.cards.update(op.card.id, { userEdited: op.card.userEdited || !!prev, userCreated: op.card.userCreated })
+  }
 }

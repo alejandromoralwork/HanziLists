@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db/schema'
+import { db, track, uuid } from '../db/schema'
+import { scheduleSync } from '../sync/sync'
 import { CATEGORIES, directionsFor, type Card, type Category, type Direction, type Grade, type SrsState } from '../types'
 import { grade as gradeState, isDue, newState, srsKey } from '../srs/scheduler'
 import { buildQueue, Session } from '../srs/session'
@@ -18,7 +19,7 @@ const DIR_LABEL: Record<Direction, { title: string; sub: string }> = {
 
 async function newIntroducedToday(category: Category, direction: Direction) {
   const today = dayKey(Date.now())
-  const logs = await db.logs.where('category').equals(category).filter((l) => l.direction === direction && l.wasNew && dayKey(l.ts) === today).toArray()
+  const logs = await db.reviews.where('category').equals(category).filter((l) => l.direction === direction && l.wasNew && dayKey(l.ts) === today).toArray()
   return new Set(logs.map((l) => l.cardId)).size
 }
 
@@ -188,13 +189,18 @@ export function StudySession({ category, direction, extra }: { category: Categor
     (g: Grade) => {
       if (!card || !state || !revealed || !session.current) return
       const now = Date.now()
-      const next = gradeState(state, g, now)
+      const next = { ...gradeState(state, g, now), updatedAt: now }
       states.current.set(next.key, next)
       // advance the UI immediately; persist in the background (IndexedDB writes are ordered)
-      db.transaction('rw', db.srs, db.logs, async () => {
+      const reviewId = uuid()
+      db.transaction('rw', db.srs, db.reviews, db.outbox, async () => {
         await db.srs.put(next)
-        await db.logs.add({ ts: now, cardId: card.id, category, direction, grade: g, correct: g !== 'again', wasNew: state.status === 'new' })
-      }).catch((e) => console.error('save failed', e))
+        await db.reviews.add({ id: reviewId, ts: now, cardId: card.id, category, direction, grade: g, correct: g !== 'again', wasNew: state.status === 'new' })
+        await track('srs', next.key)
+        await track('review', reviewId)
+      })
+        .then(() => scheduleSync())
+        .catch((e) => console.error('save failed', e))
       session.current.answer(g)
       setTally((t) => ({ ...t, [g]: t[g] + 1 }))
       setRevealed(false)

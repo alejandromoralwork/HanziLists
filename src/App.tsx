@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ensureDataset } from './db/loader'
+import { checkSession, initSync, startAutoSync, useSyncStatus } from './sync/sync'
+import { Account } from './pages/Account'
 import { useRoute } from './lib/hooks'
 import { CATEGORIES, directionsFor, type Category, type Direction } from './types'
 import { Dashboard } from './pages/Dashboard'
@@ -15,8 +17,11 @@ export function App() {
   const route = useRoute()
 
   useEffect(() => {
-    ensureDataset(setLoading)
+    initSync()
+      .then(() => ensureDataset(setLoading))
       .then(() => setLoading(null))
+      .then(() => checkSession())
+      .then(() => startAutoSync())
       .catch((e) => setError(String(e?.message ?? e)))
   }, [])
 
@@ -29,6 +34,7 @@ export function App() {
     body = <StudySession key={route.join('/')} category={a} direction={b as Direction} extra={Number(c) || 0} />
   else if (page === 'study' && isCat(a)) body = <StudyStart category={a} />
   else if (page === 'settings') body = <Settings />
+  else if (page === 'account') body = <Account />
   else body = <Dashboard />
 
   const inSession = page === 'study' && !!b
@@ -52,6 +58,7 @@ export function App() {
                 </a>
               ))}
             </div>
+            <AccountLink active={page === 'account'} />
             <a href="#/settings" className={`rounded-md px-2 py-1 hover:bg-surface-2 ${page === 'settings' ? 'text-ink' : 'text-ink-3'}`} aria-label="Settings">
               ⚙
             </a>
@@ -60,5 +67,23 @@ export function App() {
       )}
       <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">{body}</main>
     </div>
+  )
+}
+
+function AccountLink({ active }: { active: boolean }) {
+  const st = useSyncStatus()
+  const dot = !st.username ? '' : st.phase === 'syncing' ? 'bg-warn animate-pulse' : st.phase === 'idle' ? 'bg-good' : 'bg-bad'
+  const title = !st.username ? 'Sign in to sync across devices' : st.phase === 'idle' ? 'Synced' : st.phase === 'syncing' ? 'Syncing…' : (st.error ?? 'Sync problem')
+  return (
+    <a href="#/account" title={title} className={`flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 hover:bg-surface-2 ${active ? 'text-ink' : 'text-ink-3'}`}>
+      {st.username ? (
+        <>
+          <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
+          <span className="max-w-24 truncate">{st.username}</span>
+        </>
+      ) : (
+        'Sign in'
+      )}
+    </a>
   )
 }

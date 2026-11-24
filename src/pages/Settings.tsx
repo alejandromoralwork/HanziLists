@@ -60,7 +60,7 @@ export function Settings() {
       <section className="space-y-3 rounded-2xl border border-line bg-surface p-5">
         <h2 className="font-medium">Backup</h2>
         <p className="text-sm text-ink-3">
-          Your cards and progress live only in this browser. Export a backup to keep it safe, or import it on another device.
+          Download everything as a JSON file, or restore one. When you are signed in, a restored backup is merged into your account.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button onClick={doExport}>Export backup</Button>
@@ -72,7 +72,7 @@ export function Settings() {
 
       <section className="space-y-3 rounded-2xl border border-bad/30 bg-surface p-5">
         <h2 className="font-medium">Reset</h2>
-        <p className="text-sm text-ink-3">Forget all study progress and history. Your cards and edits are kept.</p>
+        <p className="text-sm text-ink-3">Forget all study progress and history (on all your devices when signed in). Your cards and edits are kept.</p>
         {confirmReset ? (
           <div className="flex gap-2">
             <Button

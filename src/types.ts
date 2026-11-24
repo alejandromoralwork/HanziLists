@@ -44,10 +44,11 @@ export interface SrsState {
   reps: number
   lapses: number
   lastReviewed: number
+  updatedAt?: number // for sync (last-write-wins)
 }
 
 export interface ReviewLog {
-  id?: number
+  id: string // uuid, unique across devices
   ts: number
   cardId: string
   category: Category
@@ -61,7 +62,15 @@ export interface Settings {
   newPerDay: number
   showPinyin: boolean
   typeAnswer: boolean
+  updatedAt?: number
 }
+
+/** A user edit to the card lists, replayed in time order on every synced device. */
+export type CardOp =
+  | { id: string; ts: number; type: 'save'; card: Card }
+  | { id: string; ts: number; type: 'delete'; cardId: string }
+
+export type SyncKind = 'srs' | 'review' | 'cardop' | 'settings'
 
 export const DEFAULT_SETTINGS: Settings = { newPerDay: 20, showPinyin: true, typeAnswer: false }
 

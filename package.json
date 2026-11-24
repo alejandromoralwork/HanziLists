@@ -8,6 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4610 --strictPort",
     "e2e": "node scripts/e2e.mjs",
+    "e2e:sync": "node scripts/e2e-sync.mjs",
+    "api": "node server/index.mjs",
     "data": "tsx scripts/build-data.ts",
     "test": "vitest run",
     "deploy": "bash scripts/deploy.sh"

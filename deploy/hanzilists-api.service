@@ -1,0 +1,21 @@
+[Unit]
+Description=HanziLists sync API (accounts + progress sync, 127.0.0.1:4620, served at https://<vm>/hanzi/api/)
+After=network.target
+
+[Service]
+User=alejandro
+WorkingDirectory=/home/alejandro/projects/HanziLists
+Environment=PATH=/home/alejandro/.nvm/versions/node/v26.13.1/bin:/usr/bin:/bin
+Environment=HANZI_PORT=4620
+Environment=HANZI_DB=/home/alejandro/projects/HanziLists/server/data/hanzi.db
+Environment=HANZI_SIGNUP=open
+ExecStart=/home/alejandro/.nvm/versions/node/v26.13.1/bin/node server/index.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/alejandro/projects/HanziLists/server/data
+
+[Install]
+WantedBy=multi-user.target

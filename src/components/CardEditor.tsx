@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createCard, deleteCard, lastRank, saveCard } from '../db/cards'
+import { addCard, editCard, lastRank, removeCard } from '../db/cards'
 import { CATEGORIES, type Card, type Category, type Example } from '../types'
 import { Button } from './ui'
 
@@ -58,11 +58,11 @@ export function CardEditor({ card, defaultCategory = 'verb', onClose }: Props) {
       examples: draft.examples.filter((e) => e.hanzi.trim()).map((e) => ({ hanzi: e.hanzi.trim(), pinyin: e.pinyin.trim(), english: e.english.trim() })),
     }
     if (card) {
-      await saveCard(clean)
+      await editCard(clean)
       onClose({ saved: clean })
     } else {
       const { id: _omit, global_rank: _g, ...rest } = clean
-      const id = await createCard(rest)
+      const id = await addCard(rest)
       onClose({ saved: { ...clean, id } })
     }
   }
@@ -70,7 +70,7 @@ export function CardEditor({ card, defaultCategory = 'verb', onClose }: Props) {
   async function remove() {
     if (!card) return
     setBusy(true)
-    await deleteCard(card.id)
+    await removeCard(card.id)
     onClose({ deletedId: card.id })
   }
 

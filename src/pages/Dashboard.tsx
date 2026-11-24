@@ -51,7 +51,7 @@ function summarize(cards: Card[], srs: SrsState[], now: number) {
 export function Dashboard() {
   const cards = useLiveQuery(() => db.cards.toArray(), [])
   const srs = useLiveQuery(() => db.srs.toArray(), [])
-  const logs = useLiveQuery(() => db.logs.toArray(), [])
+  const logs = useLiveQuery(() => db.reviews.toArray(), [])
   const [tab, setTab] = useState<Category | 'all'>('all')
   const now = Date.now()
 
