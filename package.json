@@ -12,7 +12,8 @@
     "api": "node server/index.mjs",
     "data": "tsx scripts/build-data.ts",
     "test": "vitest run",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "data:phrases": "tsx scripts/build-phrases.ts"
   },
   "dependencies": {
     "dexie": "^4.4.7",

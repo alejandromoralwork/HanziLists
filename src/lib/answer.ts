@@ -32,3 +32,20 @@ export function checkEnglish(input: string, english: string): boolean {
   if (!n) return false
   return english.split(/[;,/]/).map(normEn).filter(Boolean).some((g) => g === n)
 }
+
+/** Punctuation (Chinese and Western) and spaces, ignored when comparing whole sentences. */
+const PUNCT = /[\s，。、？！：；“”‘’「」（）《》…—·,.?!:;"'()\-]/g
+
+/** Phrases EN→ZH: the whole sentence in hanzi, or its whole pinyin (tones optional); punctuation ignored. */
+export function checkChineseSentence(input: string, hanzi: string, pinyin: string): boolean {
+  const t = input.trim()
+  if (!t) return false
+  if (t.replace(PUNCT, '') === hanzi.replace(PUNCT, '')) return true
+  return normPinyin(t.replace(PUNCT, '')) === normPinyin(pinyin.replace(PUNCT, ''))
+}
+
+/** Phrases ZH→EN: the whole English sentence, ignoring case, punctuation and extra spaces. */
+export function checkEnglishSentence(input: string, english: string): boolean {
+  const n = (s: string) => s.toLowerCase().replace(/[^a-z0-9' ]/g, ' ').replace(/\s+/g, ' ').trim()
+  return !!n(input) && n(input) === n(english)
+}

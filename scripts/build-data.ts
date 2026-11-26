@@ -11,12 +11,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { bunzip2 } from './bunzip2.ts'
 import { pinyin } from 'pinyin-pro'
 import type { Card, Category, Example } from '../src/types.ts'
+import { buildPhrases, PHRASE_LIMIT } from './phrases.ts'
 
 const CACHE = new URL('./.cache/', import.meta.url).pathname
 const OUT = new URL('../public/data/', import.meta.url).pathname
 const OVERRIDES = new URL('../data/seed-overrides.json', import.meta.url).pathname
 
-const LIMITS: Record<Category, number> = { adjective: 1500, verb: 3000, noun: 4000, other: 1500, character: 3000 }
+const LIMITS: Record<Category, number> = { adjective: 1500, verb: 3000, noun: 4000, other: 1500, character: 3000, phrase: PHRASE_LIMIT }
 
 const SOURCES: Record<string, string> = {
   'complete.min.json': 'https://raw.githubusercontent.com/drkameleon/complete-hsk-vocabulary/main/complete.min.json',
@@ -121,7 +122,7 @@ async function main() {
   const wordRank = new Map<string, number>()
   for (const w of raw) wordRank.set(w.s, Math.min(w.q, wordRank.get(w.s) ?? Infinity))
 
-  const buckets: Record<Category, Card[]> = { adjective: [], verb: [], noun: [], other: [], character: [] }
+  const buckets: Record<Category, Card[]> = { adjective: [], verb: [], noun: [], other: [], character: [], phrase: [] }
   const seen = new Set<string>()
   for (const w of [...raw].sort((a, b) => a.q - b.q || a.s.length - b.s.length || a.s.localeCompare(b.s))) {
     const cat = categoryOf(w.p)
@@ -275,6 +276,9 @@ async function main() {
       if (!c.hsk) delete c.hsk
     }
   }
+
+  // ---------- phrases (built from the word lists' examples, after overrides) ----------
+  buckets.phrase = buildPhrases((['noun', 'verb', 'adjective', 'other'] as const).map((c) => buckets[c]))
 
   // ---------- write ----------
   mkdirSync(OUT, { recursive: true })

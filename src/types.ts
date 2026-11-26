@@ -1,4 +1,4 @@
-export type Category = 'adjective' | 'verb' | 'noun' | 'other' | 'character'
+export type Category = 'adjective' | 'verb' | 'noun' | 'other' | 'character' | 'phrase'
 export type Direction = 'en-zh' | 'zh-en'
 export type Grade = 'again' | 'hard' | 'easy'
 export type Status = 'new' | 'learning' | 'review' | 'mastered'
@@ -9,6 +9,7 @@ export const CATEGORIES: { id: Category; label: string; zh: string }[] = [
   { id: 'noun', label: 'Nouns', zh: '名词' },
   { id: 'other', label: 'Others', zh: '其他' },
   { id: 'character', label: 'Characters', zh: '汉字' },
+  { id: 'phrase', label: 'Phrases translation', zh: '句子翻译' },
 ]
 
 export interface Example {

@@ -1,10 +1,11 @@
 {
-  "version": "2026-11-24-12621",
+  "version": "2026-11-26-18621",
   "counts": {
     "adjective": 1296,
     "verb": 3000,
     "noun": 4000,
     "other": 1325,
-    "character": 3000
+    "character": 3000,
+    "phrase": 6000
   }
 }

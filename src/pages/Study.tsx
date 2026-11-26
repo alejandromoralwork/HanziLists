@@ -7,7 +7,7 @@ import { grade as gradeState, isDue, newState, srsKey } from '../srs/scheduler'
 import { buildQueue, Session } from '../srs/session'
 import { dayKey } from '../lib/time'
 import { go, useSettings } from '../lib/hooks'
-import { checkChinese, checkEnglish } from '../lib/answer'
+import { checkChinese, checkChineseSentence, checkEnglish, checkEnglishSentence } from '../lib/answer'
 import { speak } from '../lib/speech'
 import { CardEditor } from '../components/CardEditor'
 import { Bar, Button, Pinyin, RankBadge, SpeakButton } from '../components/ui'
@@ -175,15 +175,19 @@ export function StudySession({ category, direction, extra }: { category: Categor
   const item = session.current?.current
   const card = item?.card
   const showPinyinFront = category === 'character' ? false : (pinyinOn ?? settings.showPinyin)
+  // Phrases: whole sentences, so smaller type, whole-sentence answer checks and a "key word" hint.
+  const isPhrase = category === 'phrase'
+  const zhSize = isPhrase ? 'text-3xl sm:text-4xl' : 'text-6xl'
   const state = card ? (states.current.get(srsKey(card.id, direction)) ?? newState(card, direction)) : null
 
   const reveal = useCallback(() => {
     if (!card || revealed) return
     if (settings.typeAnswer && typed.trim()) {
-      setChecked(direction === 'en-zh' ? checkChinese(typed, card.hanzi, card.pinyin) : checkEnglish(typed, card.english))
+      if (isPhrase) setChecked(direction === 'en-zh' ? checkChineseSentence(typed, card.hanzi, card.pinyin) : checkEnglishSentence(typed, card.english))
+      else setChecked(direction === 'en-zh' ? checkChinese(typed, card.hanzi, card.pinyin) : checkEnglish(typed, card.english))
     }
     setRevealed(true)
-  }, [card, revealed, settings.typeAnswer, typed, direction])
+  }, [card, revealed, settings.typeAnswer, typed, direction, isPhrase])
 
   const answer = useCallback(
     (g: Grade) => {
@@ -297,7 +301,7 @@ export function StudySession({ category, direction, extra }: { category: Categor
         <div className="min-h-40 text-center">
           {direction === 'zh-en' ? (
             <>
-              <div className="han text-6xl leading-tight sm:text-7xl">{card.hanzi}</div>
+              <div className={`han leading-tight ${isPhrase ? 'text-3xl sm:text-4xl' : 'text-6xl sm:text-7xl'}`}>{card.hanzi}</div>
               <div className="mt-3 h-7 text-lg">
                 {showPinyinFront || revealed ? (
                   <Pinyin text={card.pinyin} />
@@ -314,10 +318,16 @@ export function StudySession({ category, direction, extra }: { category: Categor
               {!revealed && card.examples.length > 0 && (
                 <div className="mt-4">
                   {context ? (
-                    <p className="text-sm text-ink-3 italic">“{card.examples[0].english}”</p>
+                    isPhrase ? (
+                      <p className="text-sm text-ink-3">
+                        key word: <span className="han text-base text-ink-2">{card.examples[0].hanzi}</span> {card.examples[0].pinyin} · {card.examples[0].english}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-ink-3 italic">“{card.examples[0].english}”</p>
+                    )
                   ) : (
                     <button className="text-sm text-ink-3 underline-offset-4 hover:underline" onClick={() => setContext(true)}>
-                      show context
+                      {isPhrase ? 'show key word' : 'show context'}
                     </button>
                   )}
                 </div>
@@ -339,7 +349,7 @@ export function StudySession({ category, direction, extra }: { category: Categor
               autoFocus
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              placeholder={direction === 'en-zh' ? 'Type hanzi or pinyin (tones optional)…' : 'Type the English meaning…'}
+              placeholder={isPhrase ? (direction === 'en-zh' ? 'Type the sentence in hanzi or pinyin…' : 'Type the English sentence…') : direction === 'en-zh' ? 'Type hanzi or pinyin (tones optional)…' : 'Type the English meaning…'}
               className="w-full rounded-xl border border-line px-4 py-3 text-center outline-none focus:border-accent"
               lang={direction === 'en-zh' ? 'zh' : 'en'}
             />
@@ -362,7 +372,7 @@ export function StudySession({ category, direction, extra }: { category: Categor
             <div className="text-center">
               {direction === 'en-zh' ? (
                 <>
-                  <div className="han text-6xl leading-tight">{card.hanzi}</div>
+                  <div className={`han leading-tight ${zhSize}`}>{card.hanzi}</div>
                   <Pinyin text={card.pinyin} className="mt-2 block text-lg" />
                 </>
               ) : (
@@ -371,6 +381,7 @@ export function StudySession({ category, direction, extra }: { category: Categor
             </div>
             {card.examples.length > 0 && (
               <ul className="mt-6 space-y-3">
+                {isPhrase && <li className="text-xs tracking-wide text-ink-3 uppercase">Key word</li>}
                 {card.examples.map((ex, i) => (
                   <li key={i} className="flex items-start gap-1 rounded-xl bg-surface-2/50 p-3">
                     <SpeakButton text={ex.hanzi} className="shrink-0" />

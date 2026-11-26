@@ -183,6 +183,7 @@ function Row({ card, status, open, onToggle, onEdit }: { card: Card; status: Sta
             <p className="text-ink-2">{card.english}</p>
             {card.hsk && <p className="text-xs text-ink-3">{card.hsk}</p>}
             <ul className="mt-2 space-y-2">
+              {card.category === 'phrase' && card.examples.length > 0 && <li className="text-xs tracking-wide text-ink-3 uppercase">Key word</li>}
               {card.examples.map((ex, i) => (
                 <li key={i} className="flex items-start gap-1">
                   <SpeakButton text={ex.hanzi} className="-mt-1 shrink-0" />
